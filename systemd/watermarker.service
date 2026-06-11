@@ -1,0 +1,22 @@
+[Unit]
+Description=Watermarker Pro (Streamlit)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=maan
+Group=maan
+WorkingDirectory=/home/maan/watermarker-pro
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/maan/watermarker-pro/.venv/bin/streamlit run web_app.py \
+  --server.address 127.0.0.1 \
+  --server.port 8501 \
+  --server.baseUrlPath wm \
+  --server.headless true \
+  --browser.gatherUsageStats false
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

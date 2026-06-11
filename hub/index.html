@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pi · сервіси</title>
+<style>
+  :root {
+    --bg: #15181c;
+    --card: #1d2228;
+    --card-hover: #232931;
+    --text: #e9ecef;
+    --muted: #8b949e;
+    --line: #2c333b;
+    --berry: #c7375f;
+    --ok: #3fb950;
+    --bad: #f85149;
+    --wait: #d29922;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px;
+  }
+  main { width: 100%; max-width: 640px; }
+  header { margin-bottom: 36px; }
+  .crumb {
+    font: 500 12px/1 ui-monospace, "Cascadia Mono", monospace;
+    letter-spacing: 0.08em;
+    color: var(--berry);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
+  .sub code { font-family: ui-monospace, monospace; color: var(--text); }
+
+  .svc {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .svc:hover { background: var(--card-hover); border-color: var(--berry); }
+  .svc:focus-visible { outline: 2px solid var(--berry); outline-offset: 2px; }
+
+  .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--wait);
+    flex: none;
+  }
+  .dot.ok  { background: var(--ok); }
+  .dot.bad { background: var(--bad); }
+  @media (prefers-reduced-motion: no-preference) {
+    .dot.wait { animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: 0.35; } }
+  }
+
+  .info { flex: 1; min-width: 0; }
+  .name { font-weight: 600; font-size: 17px; }
+  .desc { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+
+  .meta {
+    font: 12px/1 ui-monospace, "Cascadia Mono", monospace;
+    color: var(--muted);
+    text-align: right;
+    flex: none;
+  }
+  .meta .state { display: block; margin-top: 6px; }
+  .state.ok   { color: var(--ok); }
+  .state.bad  { color: var(--bad); }
+  .state.wait { color: var(--wait); }
+
+  .arrow { color: var(--muted); flex: none; font-size: 18px; }
+  .svc:hover .arrow { color: var(--berry); }
+
+  footer {
+    margin-top: 32px;
+    font: 12px/1.6 ui-monospace, monospace;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="crumb">raspberry pi 5 · локальна мережа</div>
+    <h1>Сервіси</h1>
+    <p class="sub">Хост: <code id="host">…</code> · оновлення статусів кожні 15 с</p>
+  </header>
+
+  <a class="svc" id="link-news" href="#">
+    <span class="dot wait" id="dot-news"></span>
+    <span class="info">
+      <span class="name">NewsMon</span>
+      <span class="desc">Моніторинг Telegram-каналів, AI-оцінка, дайджести</span>
+    </span>
+    <span class="meta">:8000<span class="state wait" id="st-news">перевірка…</span></span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="svc" href="/public/newswriter.html">
+    <span class="dot wait" id="dot-writer"></span>
+    <span class="info">
+      <span class="name">AI News Writer</span>
+      <span class="desc">Генерація новинних текстів · адмінка /admin/admin.php</span>
+    </span>
+    <span class="meta">:80 php<span class="state wait" id="st-writer">перевірка…</span></span>
+    <span class="arrow">→</span>
+  </a>
+
+  <a class="svc" href="/wm/">
+    <span class="dot wait" id="dot-wm"></span>
+    <span class="info">
+      <span class="name">Watermarker Pro</span>
+      <span class="desc">Пакетні водяні знаки: текст і PNG-логотип, пресети, редактор</span>
+    </span>
+    <span class="meta">:8501 /wm<span class="state wait" id="st-wm">перевірка…</span></span>
+    <span class="arrow">→</span>
+  </a>
+
+  <footer>
+    nginx · systemd · <span id="clock"></span>
+  </footer>
+</main>
+
+<script>
+  const host = location.hostname;
+  document.getElementById('host').textContent = host;
+  document.getElementById('link-news').href =
+    location.protocol + '//' + host + ':8000/dashboard.html';
+
+  const services = [
+    { id: 'news',   url: '/health/news'   },
+    { id: 'writer', url: '/health/writer' },
+    { id: 'wm',     url: '/health/wm'     },
+  ];
+
+  function setState(id, ok) {
+    const dot = document.getElementById('dot-' + id);
+    const st  = document.getElementById('st-' + id);
+    dot.className = 'dot ' + (ok ? 'ok' : 'bad');
+    st.className  = 'state ' + (ok ? 'ok' : 'bad');
+    st.textContent = ok ? 'active (running)' : 'failed';
+  }
+
+  async function check() {
+    for (const s of services) {
+      try {
+        const r = await fetch(s.url, { cache: 'no-store' });
+        setState(s.id, r.ok);
+      } catch (e) {
+        setState(s.id, false);
+      }
+    }
+  }
+
+  function tick() {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleString('uk-UA');
+  }
+
+  check();
+  tick();
+  setInterval(check, 15000);
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>
