@@ -7,7 +7,7 @@ from __future__ import annotations
 import http.server, json, os, subprocess, threading, time, uuid
 from urllib.parse import urlparse
 
-TOKEN = os.environ.get("SYSAPI_TOKEN", "")
+PASSWORD = os.environ.get("SYSAPI_PASSWORD", "admin")
 MEDIA = os.environ.get("MEDIA_DIR", "/home/maan/media")
 _UPD  = os.path.join(MEDIA, "update-all.sh")
 PORT  = int(os.environ.get("SYSAPI_PORT", "8502"))
@@ -59,12 +59,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _auth(self) -> bool:
-        return bool(TOKEN) and self.headers.get("X-Token") == TOKEN
+        return bool(PASSWORD) and self.headers.get("X-Password") == PASSWORD
 
     def do_OPTIONS(self):
         self.send_response(204)
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "X-Token")
+        self.send_header("Access-Control-Allow-Headers", "X-Password")
         self.send_header("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
         self.end_headers()
 
@@ -118,7 +118,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    if not TOKEN:
-        raise SystemExit("SYSAPI_TOKEN не задано — перевір /etc/sysapi.env")
+    if not PASSWORD:
+        raise SystemExit("SYSAPI_PASSWORD порожній — перевір /etc/sysapi.env")
     print(f"sysapi слухає на 127.0.0.1:{PORT}", flush=True)
     http.server.HTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
