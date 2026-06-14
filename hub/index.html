@@ -284,9 +284,24 @@
     </span>
   </div>
 
+  <!-- Hub / sysapi -->
+  <div class="svc">
+    <span class="dot wait" id="dot-sys"></span>
+    <span class="info">
+      <span class="name">Hub · sysapi</span>
+      <span class="desc">Цей хаб та API управління — git pull без SSH</span>
+    </span>
+    <span class="meta">:8502<span class="state wait" id="st-sys">перевірка…</span></span>
+    <span class="btns">
+      <button class="btn-act" onclick="doRestart('sysapi')" title="Перезапустити sysapi">↺</button>
+      <button class="btn-act" onclick="doUpdate('media')"   title="git pull media + оновити хаб">↑</button>
+      <span style="display:inline-block;width:26px"></span>
+    </span>
+  </div>
+
   <!-- Bulk actions -->
   <div class="bulk">
-    <button class="btn-bulk" onclick="doUpdate('all')">↑ Оновити всі</button>
+    <button class="btn-bulk" onclick="doUpdate('all')">↑ Оновити всі сервіси</button>
     <button class="btn-bulk" onclick="resetPassword()">🔑 Вийти</button>
   </div>
 
@@ -351,13 +366,18 @@
   }
 
   async function checkSysapi() {
-    const el = document.getElementById('sysapi-status');
+    const el  = document.getElementById('sysapi-status');
+    const dot = document.getElementById('dot-sys');
+    const st  = document.getElementById('st-sys');
     try {
       const d = await (await fetch('/sysapi/health', { cache:'no-store' })).json();
-      el.textContent = d.busy ? 'sysapi: зайнятий' : '';
+      dot.className = 'dot ok';
+      st.className = 'state ok'; st.textContent = d.busy ? 'зайнятий' : 'running';
+      el.textContent = '';
     } catch {
-      el.textContent = 'sysapi: недоступний';
-      el.style.color = 'var(--bad)';
+      dot.className = 'dot bad';
+      st.className = 'state bad'; st.textContent = 'failed';
+      el.textContent = 'sysapi недоступний'; el.style.color = 'var(--bad)';
     }
   }
 
@@ -479,20 +499,35 @@
   const LABELS = {
     newsmon: 'NewsMon', watermarker: 'Watermarker Pro',
     writer: 'AI News Writer', all: 'Усі сервіси',
+    sysapi: 'sysapi', media: 'Hub',
   };
+
+  async function waitSysapiRestart(title) {
+    showOp(title, 'running', 'Перезапуск sysapi… зачекай.');
+    for (let i = 0; i < 20; i++) {
+      await new Promise(r => setTimeout(r, 1000));
+      try {
+        const r = await fetch('/sysapi/health', { cache: 'no-store' });
+        if (r.ok) { showOp(title, 'done', 'sysapi перезапущено успішно.'); setTimeout(() => location.reload(), 1500); return; }
+      } catch { /* sysapi ще не готовий */ }
+    }
+    showOp(title, 'failed', 'sysapi не відповів протягом 20 с');
+  }
 
   async function doRestart(svc) {
     let pwd;
     try { pwd = await getPassword(`↺ Перезапустити — ${LABELS[svc]}`); }
     catch { return; }
-    setBusy(true); showOp(`↺ Restart — ${LABELS[svc]}`, 'running', '');
+    const title = `↺ Restart — ${LABELS[svc]}`;
+    setBusy(true); showOp(title, 'running', '');
     try {
       const d = await api('POST', `/sysapi/restart/${svc}`, pwd);
       if (d.error) throw new Error(d.error);
-      await pollTask(d.id, `↺ Restart — ${LABELS[svc]}`, pwd);
+      if (svc === 'sysapi') { await waitSysapiRestart(title); return; }
+      await pollTask(d.id, title, pwd);
     } catch (e) {
       if (e.message === '401') { modalError('Невірний пароль'); return; }
-      showOp(`↺ Restart — ${LABELS[svc]}`, 'failed', String(e));
+      showOp(title, 'failed', String(e));
     } finally {
       setBusy(false);
       setTimeout(() => { checkAll(); checkSysapi(); }, 3000);
@@ -508,6 +543,14 @@
     try {
       const d = await api('POST', `/sysapi/update/${svc}`, pwd);
       if (d.error) throw new Error(d.error);
+      if (svc === 'media') {
+        await pollTask(d.id, title, pwd);
+        // після оновлення hub — перезапустити sysapi щоб підхопив нові файли
+        showOp(title, 'running', 'Оновлення завершено. Перезапуск sysapi…');
+        await api('POST', '/sysapi/restart/sysapi', pwd);
+        await waitSysapiRestart(title);
+        return;
+      }
       await pollTask(d.id, title, pwd);
     } catch (e) {
       if (e.message === '401') { modalError('Невірний пароль'); return; }

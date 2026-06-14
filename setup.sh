@@ -415,7 +415,8 @@ setup_sysapi() {
 
   local envfile="/etc/sysapi.env"
   if [[ ! -f "$envfile" ]]; then
-    printf 'SYSAPI_PASSWORD=%s\nMEDIA_DIR=%s\n' "$CFG_SYSAPI_PASS" "$SCRIPT_DIR" \
+    printf 'SYSAPI_PASSWORD=%s\nMEDIA_DIR=%s\nHUB_DIR=%s\n' \
+      "$CFG_SYSAPI_PASS" "$SCRIPT_DIR" "$CFG_HUB_DIR" \
       | sudo tee "$envfile" > /dev/null
     run sudo chmod 600 "$envfile"
     sudo chown "$CFG_USER" "$envfile" 2>/dev/null || true
@@ -423,8 +424,12 @@ setup_sysapi() {
   else
     warn "$envfile вже існує — оновлення пароля"
     sudo sed -i "s|^SYSAPI_PASSWORD=.*|SYSAPI_PASSWORD=$CFG_SYSAPI_PASS|" "$envfile"
+    grep -q '^HUB_DIR=' "$envfile" \
+      || echo "HUB_DIR=$CFG_HUB_DIR" | sudo tee -a "$envfile" > /dev/null
     ok "Пароль оновлено в $envfile"
   fi
+
+  run chmod +x "$SCRIPT_DIR/sysapi/update-media.sh"
 
   sed \
     -e "s|User=maan|User=$CFG_USER|g" \
