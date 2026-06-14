@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Pi Media — System Management API
-Port 8502 · auth: X-Token header · runs behind nginx /sysapi/
+Port 8502 · auth: X-Password header · runs behind nginx /sysapi/
 """
 from __future__ import annotations
 import http.server, json, os, subprocess, threading, time, uuid
@@ -23,7 +23,7 @@ CMDS: dict[tuple[str, str], list[str] | None] = {
         "sudo", "bash", "-c",
         "PHP=$(systemctl list-units --type=service --all 'php*-fpm*' "
         "--no-legend 2>/dev/null | awk '{print $1}' | head -1) && "
-        '[ -n "$PHP" ] && systemctl restart "$PHP"; systemctl reload nginx',
+        '[ -n "$PHP" ] && systemctl restart "$PHP" && systemctl reload nginx',
     ],
     ("restart", "sysapi"):      None,          # self-restart: special handling
     ("update",  "newsmon"):     [_UPD, "newsmon"],
@@ -108,30 +108,44 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if not _oplock.acquire(blocking=False):
             self._send(409, {"error": "Інша операція вже виконується"}); return
 
-        tid = uuid.uuid4().hex[:8]
-        with _tlock:
-            _tasks[tid] = {"id": tid, "action": action, "service": service,
-                           "status": "running", "output": "", "started": time.time()}
+        thread_started = False
+        try:
+            tid = uuid.uuid4().hex[:8]
+            with _tlock:
+                # Evict completed tasks older than 1 hour to prevent unbounded growth
+                cutoff = time.time() - 3600
+                stale = [k for k, v in _tasks.items()
+                         if v["status"] != "running" and v.get("ended", 0) < cutoff]
+                for k in stale:
+                    del _tasks[k]
+                _tasks[tid] = {"id": tid, "action": action, "service": service,
+                               "status": "running", "output": "", "started": time.time()}
 
-        if action == "restart" and service == "sysapi":
-            # Позначаємо "done" ДО перезапуску — після нього задача зникне з пам'яті
-            def _self_restart():
-                time.sleep(0.2)
-                with _tlock:
-                    _tasks[tid].update(status="done", output="Перезапуск sysapi…",
-                                       ended=time.time())
+            if action == "restart" and service == "sysapi":
+                # Позначаємо "done" ДО перезапуску — після нього задача зникне з пам'яті
+                def _self_restart():
+                    time.sleep(0.2)
+                    with _tlock:
+                        _tasks[tid].update(status="done", output="Перезапуск sysapi…",
+                                           ended=time.time())
+                    _oplock.release()
+                    time.sleep(0.3)
+                    subprocess.run(["sudo", "systemctl", "restart", "sysapi"])
+                threading.Thread(target=_self_restart, daemon=True).start()
+            else:
+                def run_release():
+                    try:    _run(tid, cmd)
+                    finally: _oplock.release()
+                threading.Thread(target=run_release, daemon=True).start()
+            thread_started = True
+        except Exception:
+            if not thread_started:
                 _oplock.release()
-                time.sleep(0.3)
-                subprocess.run(["sudo", "systemctl", "restart", "sysapi"])
-            threading.Thread(target=_self_restart, daemon=True).start()
-        else:
-            def run_release():
-                try:    _run(tid, cmd)
-                finally: _oplock.release()
-            threading.Thread(target=run_release, daemon=True).start()
+            raise
 
         with _tlock:
-            self._send(202, dict(_tasks[tid]))
+            response_data = dict(_tasks[tid])
+        self._send(202, response_data)
 
 
 if __name__ == "__main__":

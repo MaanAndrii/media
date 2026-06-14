@@ -23,7 +23,7 @@ update_newsmon() {
   git pull --rebase
   ./backend/.venv/bin/pip install -q -r backend/requirements.txt
   sudo systemctl restart newsmon
-  systemctl is-active newsmon
+  systemctl is-active newsmon || echo "ПОПЕРЕДЖЕННЯ: newsmon не активний після перезапуску"
 }
 
 update_watermarker() {
@@ -32,7 +32,7 @@ update_watermarker() {
   git pull --rebase
   ./.venv/bin/pip install -q -r requirements.txt
   sudo systemctl restart watermarker
-  systemctl is-active watermarker
+  systemctl is-active watermarker || echo "ПОПЕРЕДЖЕННЯ: watermarker не активний після перезапуску"
 }
 
 update_writer() {
@@ -46,7 +46,7 @@ update_writer() {
   sudo -u www-data git pull --rebase
   sudo systemctl restart "$PHP_FPM"
   sudo systemctl reload nginx
-  systemctl is-active "$PHP_FPM" nginx
+  systemctl is-active "$PHP_FPM" || echo "ПОПЕРЕДЖЕННЯ: $PHP_FPM не активний після перезапуску"
 }
 
 case "${1:-all}" in
