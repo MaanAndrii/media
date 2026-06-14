@@ -205,6 +205,9 @@ install_packages() {
   CFG_PHP_SOCK="$sock"
   ok "PHP-FPM сокет: $CFG_PHP_SOCK"
 
+  # Права на виконання скриптів (git може скинути +x)
+  run chmod +x "$SCRIPT_DIR/update-all.sh"
+
   # Зберегти конфіг для update-all.sh
   cat > "$SCRIPT_DIR/config.env" <<EOF
 # Генерується setup.sh автоматично
