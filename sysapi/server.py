@@ -7,13 +7,16 @@ from __future__ import annotations
 import http.server, json, os, subprocess, threading, time, uuid
 from urllib.parse import urlparse
 
-PASSWORD = os.environ.get("SYSAPI_PASSWORD", "admin")
-MEDIA = os.environ.get("MEDIA_DIR", "/home/maan/media")
-_UPD  = os.path.join(MEDIA, "update-all.sh")
-PORT  = int(os.environ.get("SYSAPI_PORT", "8502"))
+PASSWORD  = os.environ.get("SYSAPI_PASSWORD", "admin")
+MEDIA     = os.environ.get("MEDIA_DIR", "/home/maan/media")
+HUB_DIR   = os.environ.get("HUB_DIR",   "/var/www/hub")
+_UPD      = os.path.join(MEDIA, "update-all.sh")
+_UPD_SELF = os.path.join(MEDIA, "sysapi", "update-media.sh")
+PORT      = int(os.environ.get("SYSAPI_PORT", "8502"))
 
 # Hardcoded whitelist — user input never reaches shell
-CMDS: dict[tuple[str, str], list[str]] = {
+# None = special in-process handling (see do_POST)
+CMDS: dict[tuple[str, str], list[str] | None] = {
     ("restart", "newsmon"):     ["sudo", "systemctl", "restart",  "newsmon"],
     ("restart", "watermarker"): ["sudo", "systemctl", "restart",  "watermarker"],
     ("restart", "writer"): [
@@ -22,10 +25,12 @@ CMDS: dict[tuple[str, str], list[str]] = {
         "--no-legend 2>/dev/null | awk '{print $1}' | head -1) && "
         '[ -n "$PHP" ] && systemctl restart "$PHP"; systemctl reload nginx',
     ],
+    ("restart", "sysapi"):      None,          # self-restart: special handling
     ("update",  "newsmon"):     [_UPD, "newsmon"],
     ("update",  "watermarker"): [_UPD, "watermarker"],
     ("update",  "writer"):      [_UPD, "writer"],
     ("update",  "all"):         [_UPD, "all"],
+    ("update",  "media"):       [_UPD_SELF],   # git pull media + оновити хаб
 }
 
 _tasks: dict[str, dict] = {}
@@ -96,9 +101,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self._send(404, {"error": "Not found"}); return
 
         action, service = parts[2], parts[3]
-        cmd = CMDS.get((action, service))
-        if not cmd:
+        if (action, service) not in CMDS:
             self._send(400, {"error": f"Unknown: {action}/{service}"}); return
+        cmd = CMDS[(action, service)]
 
         if not _oplock.acquire(blocking=False):
             self._send(409, {"error": "Інша операція вже виконується"}); return
@@ -108,11 +113,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
             _tasks[tid] = {"id": tid, "action": action, "service": service,
                            "status": "running", "output": "", "started": time.time()}
 
-        def run_release():
-            try:    _run(tid, cmd)
-            finally: _oplock.release()
+        if action == "restart" and service == "sysapi":
+            # Позначаємо "done" ДО перезапуску — після нього задача зникне з пам'яті
+            def _self_restart():
+                time.sleep(0.2)
+                with _tlock:
+                    _tasks[tid].update(status="done", output="Перезапуск sysapi…",
+                                       ended=time.time())
+                _oplock.release()
+                time.sleep(0.3)
+                subprocess.run(["sudo", "systemctl", "restart", "sysapi"])
+            threading.Thread(target=_self_restart, daemon=True).start()
+        else:
+            def run_release():
+                try:    _run(tid, cmd)
+                finally: _oplock.release()
+            threading.Thread(target=run_release, daemon=True).start()
 
-        threading.Thread(target=run_release, daemon=True).start()
         with _tlock:
             self._send(202, dict(_tasks[tid]))
 
