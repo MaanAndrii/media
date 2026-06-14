@@ -40,6 +40,7 @@
   .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
   .sub code { font-family: ui-monospace, monospace; color: var(--text); }
 
+  /* ── Service card ────────────────────────────────────────── */
   .svc {
     display: flex;
     align-items: center;
@@ -48,13 +49,10 @@
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 18px 20px;
-    margin-bottom: 12px;
-    text-decoration: none;
-    color: inherit;
+    margin-bottom: 8px;
     transition: background 0.15s, border-color 0.15s;
   }
-  .svc:hover { background: var(--card-hover); border-color: var(--berry); }
-  .svc:focus-visible { outline: 2px solid var(--berry); outline-offset: 2px; }
+  .svc:hover { background: var(--card-hover); border-color: #3d4650; }
 
   .dot {
     width: 10px; height: 10px;
@@ -78,21 +76,115 @@
     color: var(--muted);
     text-align: right;
     flex: none;
+    min-width: 72px;
   }
   .meta .state { display: block; margin-top: 6px; }
   .state.ok   { color: var(--ok); }
   .state.bad  { color: var(--bad); }
   .state.wait { color: var(--wait); }
 
-  .arrow { color: var(--muted); flex: none; font-size: 18px; }
-  .svc:hover .arrow { color: var(--berry); }
+  /* ── Action buttons ──────────────────────────────────────── */
+  .btns {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex: none;
+  }
+  .btn-act {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 5px 9px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+    font-family: inherit;
+    line-height: 1;
+  }
+  .btn-act:hover:not(:disabled) { border-color: var(--berry); color: var(--berry); }
+  .btn-act:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-open {
+    color: var(--muted);
+    font-size: 18px;
+    text-decoration: none;
+    padding: 2px 4px;
+    line-height: 1;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .btn-open:hover { color: var(--berry); }
+
+  /* ── Bulk row ────────────────────────────────────────────── */
+  .bulk {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin: 4px 0 20px;
+  }
+  .btn-bulk {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  .btn-bulk:hover:not(:disabled) { border-color: var(--berry); color: var(--berry); }
+  .btn-bulk:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Operation panel ─────────────────────────────────────── */
+  #op-panel {
+    display: none;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 12px;
+  }
+  #op-panel.visible { display: block; }
+  .op-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .op-title { font-weight: 600; font-size: 14px; flex: 1; }
+  #op-status { font-size: 13px; white-space: nowrap; }
+  .op-ok   { color: var(--ok); }
+  .op-err  { color: var(--bad); }
+  .op-busy { color: var(--wait); }
+  .btn-close {
+    background: none; border: none; color: var(--muted);
+    cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1;
+  }
+  .btn-close:hover { color: var(--text); }
+  #op-log {
+    font: 12px/1.55 ui-monospace, "Cascadia Mono", monospace;
+    color: var(--muted);
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--bg);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 0;
+  }
 
   footer {
-    margin-top: 32px;
+    margin-top: 24px;
     font: 12px/1.6 ui-monospace, monospace;
     color: var(--muted);
     border-top: 1px solid var(--line);
     padding-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
   }
 </style>
 </head>
@@ -101,51 +193,85 @@
   <header>
     <div class="crumb">raspberry pi 5 · локальна мережа</div>
     <h1>Сервіси</h1>
-    <p class="sub">Хост: <code id="host">…</code> · оновлення статусів кожні 15 с</p>
+    <p class="sub">Хост: <code id="host">…</code> · статуси оновлюються кожні 15 с</p>
   </header>
 
-  <a class="svc" id="link-news" href="#">
+  <!-- NewsMon -->
+  <div class="svc">
     <span class="dot wait" id="dot-news"></span>
     <span class="info">
       <span class="name">NewsMon</span>
       <span class="desc">Моніторинг Telegram-каналів, AI-оцінка, дайджести</span>
     </span>
     <span class="meta">:8000<span class="state wait" id="st-news">перевірка…</span></span>
-    <span class="arrow">→</span>
-  </a>
+    <span class="btns">
+      <button class="btn-act" onclick="doRestart('newsmon')" title="Перезапустити">↺</button>
+      <button class="btn-act" onclick="doUpdate('newsmon')"  title="Оновити (git pull)">↑</button>
+      <a class="btn-open" id="link-news" href="#" target="_blank" title="Відкрити">→</a>
+    </span>
+  </div>
 
-  <a class="svc" href="/public/newswriter.html">
+  <!-- AI News Writer -->
+  <div class="svc">
     <span class="dot wait" id="dot-writer"></span>
     <span class="info">
       <span class="name">AI News Writer</span>
       <span class="desc">Генерація новинних текстів · адмінка /admin/admin.php</span>
     </span>
     <span class="meta">:80 php<span class="state wait" id="st-writer">перевірка…</span></span>
-    <span class="arrow">→</span>
-  </a>
+    <span class="btns">
+      <button class="btn-act" onclick="doRestart('writer')" title="Перезапустити php-fpm + nginx">↺</button>
+      <button class="btn-act" onclick="doUpdate('writer')"  title="Оновити (git pull)">↑</button>
+      <a class="btn-open" href="/public/newswriter.html" target="_blank" title="Відкрити">→</a>
+    </span>
+  </div>
 
-  <a class="svc" href="/wm/">
+  <!-- Watermarker Pro -->
+  <div class="svc">
     <span class="dot wait" id="dot-wm"></span>
     <span class="info">
       <span class="name">Watermarker Pro</span>
       <span class="desc">Пакетні водяні знаки: текст і PNG-логотип, пресети, редактор</span>
     </span>
     <span class="meta">:8501 /wm<span class="state wait" id="st-wm">перевірка…</span></span>
-    <span class="arrow">→</span>
-  </a>
+    <span class="btns">
+      <button class="btn-act" onclick="doRestart('watermarker')" title="Перезапустити">↺</button>
+      <button class="btn-act" onclick="doUpdate('watermarker')"  title="Оновити (git pull)">↑</button>
+      <a class="btn-open" href="/wm/" target="_blank" title="Відкрити">→</a>
+    </span>
+  </div>
+
+  <!-- Bulk actions -->
+  <div class="bulk">
+    <button class="btn-bulk" onclick="doUpdate('all')" title="git pull та перезапуск для всіх сервісів">↑ Оновити всі</button>
+    <button class="btn-bulk" onclick="clearToken()" title="Скинути збережений токен">🔑 Токен</button>
+  </div>
+
+  <!-- Operation panel (hidden by default) -->
+  <div id="op-panel">
+    <div class="op-header">
+      <span class="op-title" id="op-title">—</span>
+      <span id="op-status"></span>
+      <button class="btn-close" onclick="closeOp()" title="Закрити">✕</button>
+    </div>
+    <pre id="op-log"></pre>
+  </div>
 
   <footer>
-    nginx · systemd · <span id="clock"></span>
+    <span>nginx · systemd · <span id="clock"></span></span>
+    <span id="sysapi-status" style="color:var(--muted);font-size:11px">sysapi…</span>
   </footer>
 </main>
 
 <script>
+  // ── Init ──────────────────────────────────────────────────
   const host = location.hostname;
   document.getElementById('host').textContent = host;
   document.getElementById('link-news').href =
     location.protocol + '//' + host + ':8000/dashboard.html';
 
-  const services = [
+  // ── Status checks ─────────────────────────────────────────
+  const SVCS = [
     { id: 'news',   url: '/health/news'   },
     { id: 'writer', url: '/health/writer' },
     { id: 'wm',     url: '/health/wm'     },
@@ -159,14 +285,26 @@
     st.textContent = ok ? 'active (running)' : 'failed';
   }
 
-  async function check() {
-    for (const s of services) {
+  async function checkAll() {
+    for (const s of SVCS) {
       try {
         const r = await fetch(s.url, { cache: 'no-store' });
         setState(s.id, r.ok);
-      } catch (e) {
-        setState(s.id, false);
-      }
+      } catch { setState(s.id, false); }
+    }
+  }
+
+  // sysapi health (no auth needed)
+  async function checkSysapi() {
+    const el = document.getElementById('sysapi-status');
+    try {
+      const r = await fetch('/sysapi/health', { cache: 'no-store' });
+      const d = await r.json();
+      el.textContent = d.busy ? 'sysapi: зайнятий' : 'sysapi: OK';
+      el.style.color = 'var(--ok)';
+    } catch {
+      el.textContent = 'sysapi: недоступний';
+      el.style.color = 'var(--bad)';
     }
   }
 
@@ -175,10 +313,117 @@
       new Date().toLocaleString('uk-UA');
   }
 
-  check();
-  tick();
-  setInterval(check, 15000);
+  checkAll(); checkSysapi(); tick();
+  setInterval(checkAll, 15000);
+  setInterval(checkSysapi, 30000);
   setInterval(tick, 1000);
+
+  // ── Token (sessionStorage) ───────────────────────────────
+  function getToken() {
+    let t = sessionStorage.getItem('sysapi_token');
+    if (!t) {
+      t = prompt('Введи SYSAPI_TOKEN\n(значення з /etc/sysapi.env на Pi):');
+      if (t) sessionStorage.setItem('sysapi_token', t.trim());
+    }
+    return t ? t.trim() : null;
+  }
+
+  function clearToken() {
+    sessionStorage.removeItem('sysapi_token');
+    alert('Токен скинуто. Наступна дія запитає його знову.');
+  }
+
+  // ── UI helpers ────────────────────────────────────────────
+  function setBusy(busy) {
+    document.querySelectorAll('.btn-act, .btn-bulk').forEach(b => b.disabled = busy);
+  }
+
+  const STATUS_MAP = {
+    running: ['⏳ виконується…', 'op-busy'],
+    done:    ['✓ готово',        'op-ok'],
+    failed:  ['✗ помилка',       'op-err'],
+  };
+
+  function showOp(title, status, output) {
+    document.getElementById('op-title').textContent = title;
+    document.getElementById('op-log').textContent = output || '…';
+    const el = document.getElementById('op-status');
+    const [text, cls] = STATUS_MAP[status] || ['', ''];
+    el.textContent = text; el.className = cls;
+    document.getElementById('op-panel').classList.add('visible');
+    const log = document.getElementById('op-log');
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function closeOp() {
+    document.getElementById('op-panel').classList.remove('visible');
+  }
+
+  // ── API ───────────────────────────────────────────────────
+  async function api(method, path, token) {
+    const r = await fetch(path, {
+      method,
+      headers: { 'X-Token': token },
+      cache: 'no-store',
+    });
+    if (r.status === 401) {
+      sessionStorage.removeItem('sysapi_token');
+      throw new Error('Невірний токен — введи знову');
+    }
+    return r.json();
+  }
+
+  async function pollTask(taskId, title, token) {
+    for (let i = 0; i < 150; i++) {   // max 5 хвилин
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const d = await api('GET', `/sysapi/task/${taskId}`, token);
+        showOp(title, d.status, d.output);
+        if (d.status !== 'running') return;
+      } catch (e) {
+        showOp(title, 'failed', String(e)); return;
+      }
+    }
+    showOp(title, 'failed', 'Таймаут очікування');
+  }
+
+  // ── Actions ───────────────────────────────────────────────
+  const LABELS = {
+    newsmon: 'NewsMon', watermarker: 'Watermarker Pro',
+    writer: 'AI News Writer', all: 'Усі сервіси',
+  };
+
+  async function doRestart(svc) {
+    const token = getToken(); if (!token) return;
+    const title = `↺ Restart — ${LABELS[svc] || svc}`;
+    setBusy(true); showOp(title, 'running', '');
+    try {
+      const d = await api('POST', `/sysapi/restart/${svc}`, token);
+      if (d.error) throw new Error(d.error);
+      await pollTask(d.id, title, token);
+    } catch (e) {
+      showOp(title, 'failed', String(e));
+    } finally {
+      setBusy(false);
+      setTimeout(() => { checkAll(); checkSysapi(); }, 3000);
+    }
+  }
+
+  async function doUpdate(svc) {
+    const token = getToken(); if (!token) return;
+    const title = `↑ Update — ${LABELS[svc] || svc}`;
+    setBusy(true); showOp(title, 'running', 'Запуск оновлення…');
+    try {
+      const d = await api('POST', `/sysapi/update/${svc}`, token);
+      if (d.error) throw new Error(d.error);
+      await pollTask(d.id, title, token);
+    } catch (e) {
+      showOp(title, 'failed', String(e));
+    } finally {
+      setBusy(false);
+      setTimeout(() => { checkAll(); checkSysapi(); }, 5000);
+    }
+  }
 </script>
 </body>
 </html>

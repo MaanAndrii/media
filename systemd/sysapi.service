@@ -1,0 +1,19 @@
+[Unit]
+Description=Pi Media System API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=maan
+Group=maan
+WorkingDirectory=/home/maan/media
+Environment=PYTHONUNBUFFERED=1
+Environment=MEDIA_DIR=/home/maan/media
+EnvironmentFile=/etc/sysapi.env
+ExecStart=/usr/bin/python3 /home/maan/media/sysapi/server.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
