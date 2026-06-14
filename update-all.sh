@@ -4,11 +4,16 @@
 #                ./update-all.sh newsmon    (лише один)
 set -euo pipefail
 
-NEWSMON_DIR=/home/maan/newsmon
-WM_DIR=/home/maan/watermarker-pro
-WRITER_DIR=/var/www/ainewswriter
-PHP_FPM=$(systemctl list-units --type=service --all 'php*-fpm*' --no-legend \
-          | awk '{print $1}' | head -1)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Завантажити конфіг із wizard (якщо є), інакше — дефолти
+if [[ -f "$SCRIPT_DIR/config.env" ]]; then
+  # shellcheck source=/dev/null
+  source "$SCRIPT_DIR/config.env"
+fi
+NEWSMON_DIR="${NEWSMON_DIR:-/home/maan/newsmon}"
+WM_DIR="${WM_DIR:-/home/maan/watermarker-pro}"
+WRITER_DIR="${WRITER_DIR:-/var/www/ainewswriter}"
 
 log() { printf '\n\033[1;35m== %s ==\033[0m\n' "$1"; }
 
@@ -32,6 +37,11 @@ update_watermarker() {
 
 update_writer() {
   log "ainewswriter"
+  # Визначаємо php-fpm тут, а не на старті — уникаємо помилки якщо php не встановлено
+  local PHP_FPM
+  PHP_FPM=$(systemctl list-units --type=service --all 'php*-fpm*' --no-legend \
+            2>/dev/null | awk '{print $1}' | head -1 || true)
+  [[ -n "$PHP_FPM" ]] || { echo "Помилка: php-fpm сервіс не знайдено"; exit 1; }
   cd "$WRITER_DIR"
   sudo -u www-data git pull --rebase
   sudo systemctl restart "$PHP_FPM"

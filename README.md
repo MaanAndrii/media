@@ -25,23 +25,35 @@ media/
 └── DEPLOY.md                 # повна інструкція розгортання
 ```
 
-## Швидкий старт
+## Швидкий старт — wizard встановлення
 
-Повна покрокова інструкція — у [DEPLOY.md](DEPLOY.md). Якщо коротко:
+Встанови `git`, клонуй репо і запусти wizard:
 
 ```bash
-cd /home/maan
+sudo apt install -y git
 git clone https://github.com/MaanAndrii/media.git
-# далі — за DEPLOY.md, розділи 2–8
+cd media
+bash setup.sh
 ```
+
+Wizard у режимі питання–відповідь:
+- встановить системні пакети (nginx, php, python3…)
+- склонує та налаштує всі три сервіси
+- згенерує токени і запише `.env`-файли
+- застосує nginx-конфіг та systemd-юніти
+- перевірить, що всі сервіси запустились
+
+Після завершення: залишається лише авторизувати Telegram у NewsMon через веб-інтерфейс.
+
+Повна покрокова інструкція (без wizard) — у [DEPLOY.md](DEPLOY.md).
 
 ## Оновлення вже розгорнутої системи
 
 ```bash
-cd /home/maan/media && git pull
+cd ~/media && git pull
 ./update-all.sh              # усі сервіси
 ./update-all.sh watermarker  # або вибірково: newsmon | watermarker | writer
 ```
 
-> Конфіги nginx/systemd/hub після `git pull` цього репо **не** застосовуються
-> автоматично — їх треба скопіювати і перезапустити сервіси (DEPLOY.md, розділ 10).
+> Конфіги nginx/systemd/hub після `git pull` **не** застосовуються автоматично —
+> скопіюй і перезапусти (DEPLOY.md, розділ 10) або запусти `bash setup.sh` повторно.
