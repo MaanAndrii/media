@@ -9,7 +9,6 @@ User=maan
 Group=maan
 WorkingDirectory=/home/maan/newsmon/backend
 Environment=PYTHONUNBUFFERED=1
-EnvironmentFile=/etc/newsmon.env
 ExecStart=/home/maan/newsmon/backend/.venv/bin/uvicorn app:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5

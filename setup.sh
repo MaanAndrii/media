@@ -18,7 +18,7 @@ TOTAL_STEPS=10
 IS_PI=false
 
 CFG_USER="" CFG_HOME="" CFG_NEWSMON_DIR="" CFG_WM_DIR=""
-CFG_WRITER_DIR="" CFG_HUB_DIR="" CFG_NEWSMON_TOKEN=""
+CFG_WRITER_DIR="" CFG_HUB_DIR=""
 CFG_WRITER_PASS="" CFG_ANTHROPIC_KEY="" CFG_XAI_KEY=""
 CFG_GOOGLE_KEY="" CFG_PHP_SOCK="" CFG_BACKUP=false CFG_SYSAPI_PASS=""
 
@@ -132,17 +132,6 @@ gather_config() {
   ask CFG_WRITER_DIR  "Каталог AI News Writer"    "/var/www/ainewswriter"
   ask CFG_HUB_DIR     "Каталог хаб-сторінки"     "/var/www/hub"
 
-  hr; echo -e "  ${W}NewsMon — токен API${N}"; hr
-  if ask_yn "Згенерувати токен автоматично?" "y"; then
-    command -v openssl &>/dev/null \
-      && CFG_NEWSMON_TOKEN=$(openssl rand -hex 32) \
-      || CFG_NEWSMON_TOKEN=$(tr -dc 'a-f0-9' < /dev/urandom | head -c 64)
-    ok "Токен: ${CFG_NEWSMON_TOKEN:0:16}…"
-  else
-    ask_secret CFG_NEWSMON_TOKEN "Введи токен NewsMon"
-    [[ -n "$CFG_NEWSMON_TOKEN" ]] || err "Токен не може бути порожнім"
-  fi
-
   hr; echo -e "  ${W}AI News Writer — адмін-пароль${N}"; hr
   ask_secret CFG_WRITER_PASS "Пароль адміністратора"
   [[ -n "$CFG_WRITER_PASS" ]] || err "Пароль не може бути порожнім"
@@ -171,7 +160,6 @@ confirm_plan() {
   printf "  %-28s %s\n" "Watermarker Pro:"   "$CFG_WM_DIR"
   printf "  %-28s %s\n" "AI News Writer:"    "$CFG_WRITER_DIR"
   printf "  %-28s %s\n" "Хаб:"              "$CFG_HUB_DIR"
-  printf "  %-28s %s\n" "NewsMon токен:"     "${CFG_NEWSMON_TOKEN:0:16}…"
   printf "  %-28s %s\n" "Anthropic API key:" "${CFG_ANTHROPIC_KEY:-(не вказано)}"
   printf "  %-28s %s\n" "xAI API key:"       "${CFG_XAI_KEY:-(не вказано)}"
   printf "  %-28s %s\n" "Google API key:"    "${CFG_GOOGLE_KEY:-(не вказано)}"
@@ -234,16 +222,6 @@ setup_newsmon() {
   run "$venv/bin/pip" install -q --upgrade pip
   run "$venv/bin/pip" install -q -r "$CFG_NEWSMON_DIR/backend/requirements.txt"
   ok "Python venv: $venv"
-
-  local envfile="/etc/newsmon.env"
-  if [[ ! -f "$envfile" ]]; then
-    echo "NEWSMON_API_TOKEN=$CFG_NEWSMON_TOKEN" | sudo tee "$envfile" > /dev/null
-    run sudo chmod 600 "$envfile"
-    sudo chown "$CFG_USER" "$envfile" 2>/dev/null || true
-    ok "Токен збережено: $envfile"
-  else
-    warn "$envfile вже існує — не перезаписую"
-  fi
 
   run sudo chown -R "$CFG_USER:$CFG_USER" "$CFG_NEWSMON_DIR"
   ok "NewsMon: $CFG_NEWSMON_DIR"
@@ -477,7 +455,6 @@ DEST="${backup_dir}/\$TS"
 mkdir -p "\$DEST"
 sqlite3 "${CFG_NEWSMON_DIR}/backend/newsmon.db" ".backup '\$DEST/newsmon.db'"
 cp "${CFG_NEWSMON_DIR}/backend/telegram_user.session" "\$DEST/" 2>/dev/null || true
-sudo cp /etc/newsmon.env "\$DEST/"
 sudo cp "${CFG_WRITER_DIR}/.env.local" "\$DEST/ainewswriter.env.local" 2>/dev/null || true
 sudo chown -R "${CFG_USER}:${CFG_USER}" "\$DEST"
 ls -dt "${backup_dir}/"*/ 2>/dev/null | tail -n +15 | xargs -r rm -rf
@@ -558,9 +535,6 @@ show_summary() {
   echo -e "  ${C}journalctl -u watermarker -f${N}       ← логи Watermarker"
   echo -e "  ${C}sudo tail -f /var/log/nginx/error.log${N}"
   echo -e "  ${C}${SCRIPT_DIR}/update-all.sh${N}        ← оновити всі сервіси"
-  echo
-  echo -e "  ${W}NewsMon API токен (/etc/newsmon.env):${N}"
-  echo -e "  ${Y}${CFG_NEWSMON_TOKEN}${N}"
   echo
   echo -e "  ${W}Пароль управління хабом (/etc/sysapi.env):${N}"
   echo -e "  ${Y}${CFG_SYSAPI_PASS}${N}"
