@@ -14,13 +14,13 @@ W=$'\033[1;37m' N=$'\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="$SCRIPT_DIR/setup.log"
 STEP_NUM=0
-TOTAL_STEPS=9
+TOTAL_STEPS=10
 IS_PI=false
 
 CFG_USER="" CFG_HOME="" CFG_NEWSMON_DIR="" CFG_WM_DIR=""
 CFG_WRITER_DIR="" CFG_HUB_DIR="" CFG_NEWSMON_TOKEN=""
 CFG_WRITER_PASS="" CFG_ANTHROPIC_KEY="" CFG_XAI_KEY=""
-CFG_GOOGLE_KEY="" CFG_PHP_SOCK="" CFG_BACKUP=false
+CFG_GOOGLE_KEY="" CFG_PHP_SOCK="" CFG_BACKUP=false CFG_SYSAPI_TOKEN=""
 
 trap 'echo -e "\n${R}Помилка на рядку $LINENO. Деталі: $LOG_FILE${N}" >&2' ERR
 
@@ -402,6 +402,46 @@ setup_systemd() {
   fi
 }
 
+# ── 8. Sysapi ────────────────────────────────────────────────
+
+setup_sysapi() {
+  step "System API (управління сервісами з хабу)"
+
+  local envfile="/etc/sysapi.env"
+  if [[ ! -f "$envfile" ]]; then
+    local token
+    command -v openssl &>/dev/null \
+      && token=$(openssl rand -hex 32) \
+      || token=$(tr -dc 'a-f0-9' < /dev/urandom | head -c 64)
+    printf 'SYSAPI_TOKEN=%s\nMEDIA_DIR=%s\n' "$token" "$SCRIPT_DIR" \
+      | sudo tee "$envfile" > /dev/null
+    run sudo chmod 600 "$envfile"
+    sudo chown "$CFG_USER" "$envfile" 2>/dev/null || true
+    CFG_SYSAPI_TOKEN="$token"
+    ok "SYSAPI_TOKEN збережено: $envfile"
+  else
+    warn "$envfile вже існує — не перезаписую"
+    CFG_SYSAPI_TOKEN=$(sudo awk -F= '/^SYSAPI_TOKEN/{print $2; exit}' "$envfile" 2>/dev/null \
+                       || echo "(читай /etc/sysapi.env)")
+  fi
+
+  sed \
+    -e "s|User=maan|User=$CFG_USER|g" \
+    -e "s|Group=maan|Group=$CFG_USER|g" \
+    -e "s|/home/maan/media|$SCRIPT_DIR|g" \
+    "$SCRIPT_DIR/systemd/sysapi.service" \
+    | sudo tee /etc/systemd/system/sysapi.service > /dev/null
+  run sudo systemctl daemon-reload
+  run sudo systemctl enable --now sysapi
+  sleep 2
+
+  if systemctl is-active --quiet sysapi; then
+    ok "sysapi: active (running) на 127.0.0.1:8502"
+  else
+    warn "sysapi: не запустився — journalctl -u sysapi -n 30"
+  fi
+}
+
 # ── Бекапи (опційно) ─────────────────────────────────────────
 
 setup_backup() {
@@ -435,7 +475,7 @@ BEOF
   ok "Бекап: $script (cron 03:30)"
 }
 
-# ── 9. Перевірка ─────────────────────────────────────────────
+# ── 10. Перевірка ────────────────────────────────────────────
 
 verify_all() {
   step "Перевірка"
@@ -461,6 +501,7 @@ verify_all() {
   check_url "/health/wm"                 "http://127.0.0.1/health/wm"
   check_url "NewsMon :8000 /api/status"  "http://127.0.0.1:8000/api/monitor/status"
   check_url "/health/news"               "http://127.0.0.1/health/news"
+  check_url "sysapi /health"             "http://127.0.0.1/sysapi/health"
 
   echo
   local total=$((pass + fail))
@@ -500,8 +541,12 @@ show_summary() {
   echo -e "  ${C}sudo tail -f /var/log/nginx/error.log${N}"
   echo -e "  ${C}${SCRIPT_DIR}/update-all.sh${N}        ← оновити всі сервіси"
   echo
-  echo -e "  ${W}NewsMon API токен (збережено в /etc/newsmon.env):${N}"
+  echo -e "  ${W}NewsMon API токен (/etc/newsmon.env):${N}"
   echo -e "  ${Y}${CFG_NEWSMON_TOKEN}${N}"
+  echo
+  echo -e "  ${W}Hub SYSAPI_TOKEN (/etc/sysapi.env):${N}"
+  echo -e "  ${Y}${CFG_SYSAPI_TOKEN}${N}"
+  echo -e "  ${C}→ вводиш у хабі при першому натисканні ↺ або ↑${N}"
   echo
   echo -e "  Лог встановлення: ${C}${LOG_FILE}${N}"
   echo
@@ -519,6 +564,7 @@ main() {
   setup_ainewswriter
   setup_watermarker
   setup_hub_nginx
+  setup_sysapi
   setup_systemd
   setup_backup
   verify_all
