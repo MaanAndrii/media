@@ -20,7 +20,7 @@ IS_PI=false
 CFG_USER="" CFG_HOME="" CFG_NEWSMON_DIR="" CFG_WM_DIR=""
 CFG_WRITER_DIR="" CFG_HUB_DIR="" CFG_NEWSMON_TOKEN=""
 CFG_WRITER_PASS="" CFG_ANTHROPIC_KEY="" CFG_XAI_KEY=""
-CFG_GOOGLE_KEY="" CFG_PHP_SOCK="" CFG_BACKUP=false CFG_SYSAPI_TOKEN=""
+CFG_GOOGLE_KEY="" CFG_PHP_SOCK="" CFG_BACKUP=false CFG_SYSAPI_PASS=""
 
 trap 'echo -e "\n${R}Помилка на рядку $LINENO. Деталі: $LOG_FILE${N}" >&2' ERR
 
@@ -151,6 +151,9 @@ gather_config() {
   ask_optional CFG_ANTHROPIC_KEY "Anthropic API key"
   ask_optional CFG_XAI_KEY       "xAI (Grok) API key"
   ask_optional CFG_GOOGLE_KEY    "Google (Gemini) API key"
+
+  hr; echo -e "  ${W}Пароль управління сервісами (хаб)${N}"; hr
+  ask CFG_SYSAPI_PASS "Пароль адміністратора для кнопок ↺↑" "admin"
 
   hr; echo -e "  ${W}Автоматичні бекапи${N}"; hr
   ask_yn "Налаштувати щоденний бекап (cron 03:30)?" "y" && CFG_BACKUP=true || CFG_BACKUP=false
@@ -409,20 +412,15 @@ setup_sysapi() {
 
   local envfile="/etc/sysapi.env"
   if [[ ! -f "$envfile" ]]; then
-    local token
-    command -v openssl &>/dev/null \
-      && token=$(openssl rand -hex 32) \
-      || token=$(tr -dc 'a-f0-9' < /dev/urandom | head -c 64)
-    printf 'SYSAPI_TOKEN=%s\nMEDIA_DIR=%s\n' "$token" "$SCRIPT_DIR" \
+    printf 'SYSAPI_PASSWORD=%s\nMEDIA_DIR=%s\n' "$CFG_SYSAPI_PASS" "$SCRIPT_DIR" \
       | sudo tee "$envfile" > /dev/null
     run sudo chmod 600 "$envfile"
     sudo chown "$CFG_USER" "$envfile" 2>/dev/null || true
-    CFG_SYSAPI_TOKEN="$token"
-    ok "SYSAPI_TOKEN збережено: $envfile"
+    ok "Пароль збережено: $envfile"
   else
-    warn "$envfile вже існує — не перезаписую"
-    CFG_SYSAPI_TOKEN=$(sudo awk -F= '/^SYSAPI_TOKEN/{print $2; exit}' "$envfile" 2>/dev/null \
-                       || echo "(читай /etc/sysapi.env)")
+    warn "$envfile вже існує — оновлення пароля"
+    sudo sed -i "s|^SYSAPI_PASSWORD=.*|SYSAPI_PASSWORD=$CFG_SYSAPI_PASS|" "$envfile"
+    ok "Пароль оновлено в $envfile"
   fi
 
   sed \
@@ -544,9 +542,10 @@ show_summary() {
   echo -e "  ${W}NewsMon API токен (/etc/newsmon.env):${N}"
   echo -e "  ${Y}${CFG_NEWSMON_TOKEN}${N}"
   echo
-  echo -e "  ${W}Hub SYSAPI_TOKEN (/etc/sysapi.env):${N}"
-  echo -e "  ${Y}${CFG_SYSAPI_TOKEN}${N}"
+  echo -e "  ${W}Пароль управління хабом (/etc/sysapi.env):${N}"
+  echo -e "  ${Y}${CFG_SYSAPI_PASS}${N}"
   echo -e "  ${C}→ вводиш у хабі при першому натисканні ↺ або ↑${N}"
+  echo -e "  ${C}→ змінити: sudo nano /etc/sysapi.env → sudo systemctl restart sysapi${N}"
   echo
   echo -e "  Лог встановлення: ${C}${LOG_FILE}${N}"
   echo

@@ -1,5 +1,5 @@
 [Unit]
-Description=Pi Media System API
+Description=Pi Media System API (керування сервісами)
 After=network-online.target
 Wants=network-online.target
 

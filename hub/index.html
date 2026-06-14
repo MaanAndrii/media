@@ -84,12 +84,7 @@
   .state.wait { color: var(--wait); }
 
   /* ── Action buttons ──────────────────────────────────────── */
-  .btns {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex: none;
-  }
+  .btns { display: flex; gap: 6px; align-items: center; flex: none; }
   .btn-act {
     background: none;
     border: 1px solid var(--line);
@@ -116,12 +111,7 @@
   .btn-open:hover { color: var(--berry); }
 
   /* ── Bulk row ────────────────────────────────────────────── */
-  .bulk {
-    display: flex;
-    gap: 8px;
-    justify-content: flex-end;
-    margin: 4px 0 20px;
-  }
+  .bulk { display: flex; gap: 8px; justify-content: flex-end; margin: 4px 0 20px; }
   .btn-bulk {
     background: none;
     border: 1px solid var(--line);
@@ -136,6 +126,64 @@
   .btn-bulk:hover:not(:disabled) { border-color: var(--berry); color: var(--berry); }
   .btn-bulk:disabled { opacity: 0.35; cursor: not-allowed; }
 
+  /* ── Password modal ──────────────────────────────────────── */
+  #pwd-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  #pwd-overlay.open { display: flex; }
+  #pwd-box {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 32px;
+    width: 340px;
+    max-width: calc(100vw - 40px);
+  }
+  #pwd-box h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  #pwd-action { font-size: 13px; color: var(--muted); margin-bottom: 22px; }
+  #pwd-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--text);
+    font: 15px/1 system-ui, sans-serif;
+    padding: 11px 14px;
+    outline: none;
+    margin-bottom: 8px;
+    transition: border-color 0.15s;
+  }
+  #pwd-input:focus { border-color: var(--berry); }
+  #pwd-error { font-size: 12px; color: var(--bad); min-height: 18px; margin-bottom: 14px; }
+  .pwd-btns { display: flex; gap: 10px; }
+  .pwd-btns button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    font: 14px/1 system-ui, sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #pwd-ok {
+    background: var(--berry);
+    border: none;
+    color: #fff;
+  }
+  #pwd-ok:hover { background: #a82d4f; }
+  #pwd-cancel {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+  }
+  #pwd-cancel:hover { border-color: var(--berry); color: var(--berry); }
+
   /* ── Operation panel ─────────────────────────────────────── */
   #op-panel {
     display: none;
@@ -146,12 +194,7 @@
     margin-bottom: 12px;
   }
   #op-panel.visible { display: block; }
-  .op-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 10px;
-  }
+  .op-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
   .op-title { font-weight: 600; font-size: 14px; flex: 1; }
   #op-status { font-size: 13px; white-space: nowrap; }
   .op-ok   { color: var(--ok); }
@@ -243,25 +286,40 @@
 
   <!-- Bulk actions -->
   <div class="bulk">
-    <button class="btn-bulk" onclick="doUpdate('all')" title="git pull та перезапуск для всіх сервісів">↑ Оновити всі</button>
-    <button class="btn-bulk" onclick="clearToken()" title="Скинути збережений токен">🔑 Токен</button>
+    <button class="btn-bulk" onclick="doUpdate('all')">↑ Оновити всі</button>
+    <button class="btn-bulk" onclick="resetPassword()">🔑 Вийти</button>
   </div>
 
-  <!-- Operation panel (hidden by default) -->
+  <!-- Operation panel -->
   <div id="op-panel">
     <div class="op-header">
       <span class="op-title" id="op-title">—</span>
       <span id="op-status"></span>
-      <button class="btn-close" onclick="closeOp()" title="Закрити">✕</button>
+      <button class="btn-close" onclick="closeOp()">✕</button>
     </div>
     <pre id="op-log"></pre>
   </div>
 
   <footer>
     <span>nginx · systemd · <span id="clock"></span></span>
-    <span id="sysapi-status" style="color:var(--muted);font-size:11px">sysapi…</span>
+    <span id="sysapi-status" style="font-size:11px"></span>
   </footer>
 </main>
+
+<!-- Password modal -->
+<div id="pwd-overlay">
+  <div id="pwd-box">
+    <h2>Управління сервісами</h2>
+    <p id="pwd-action"></p>
+    <input type="password" id="pwd-input" placeholder="Пароль адміністратора"
+           autocomplete="current-password">
+    <p id="pwd-error"></p>
+    <div class="pwd-btns">
+      <button id="pwd-ok"     onclick="modalOk()">Підтвердити</button>
+      <button id="pwd-cancel" onclick="modalCancel()">Скасувати</button>
+    </div>
+  </div>
+</div>
 
 <script>
   // ── Init ──────────────────────────────────────────────────
@@ -287,21 +345,16 @@
 
   async function checkAll() {
     for (const s of SVCS) {
-      try {
-        const r = await fetch(s.url, { cache: 'no-store' });
-        setState(s.id, r.ok);
-      } catch { setState(s.id, false); }
+      try { setState(s.id, (await fetch(s.url, { cache:'no-store' })).ok); }
+      catch { setState(s.id, false); }
     }
   }
 
-  // sysapi health (no auth needed)
   async function checkSysapi() {
     const el = document.getElementById('sysapi-status');
     try {
-      const r = await fetch('/sysapi/health', { cache: 'no-store' });
-      const d = await r.json();
-      el.textContent = d.busy ? 'sysapi: зайнятий' : 'sysapi: OK';
-      el.style.color = 'var(--ok)';
+      const d = await (await fetch('/sysapi/health', { cache:'no-store' })).json();
+      el.textContent = d.busy ? 'sysapi: зайнятий' : '';
     } catch {
       el.textContent = 'sysapi: недоступний';
       el.style.color = 'var(--bad)';
@@ -309,8 +362,7 @@
   }
 
   function tick() {
-    document.getElementById('clock').textContent =
-      new Date().toLocaleString('uk-UA');
+    document.getElementById('clock').textContent = new Date().toLocaleString('uk-UA');
   }
 
   checkAll(); checkSysapi(); tick();
@@ -318,20 +370,59 @@
   setInterval(checkSysapi, 30000);
   setInterval(tick, 1000);
 
-  // ── Token (sessionStorage) ───────────────────────────────
-  function getToken() {
-    let t = sessionStorage.getItem('sysapi_token');
-    if (!t) {
-      t = prompt('Введи SYSAPI_TOKEN\n(значення з /etc/sysapi.env на Pi):');
-      if (t) sessionStorage.setItem('sysapi_token', t.trim());
-    }
-    return t ? t.trim() : null;
+  // ── Password modal ────────────────────────────────────────
+  let _resolve = null, _reject = null;
+
+  function getPassword(label) {
+    const stored = sessionStorage.getItem('sysapi_pwd');
+    if (stored) return Promise.resolve(stored);
+
+    return new Promise((resolve, reject) => {
+      _resolve = resolve; _reject = reject;
+      document.getElementById('pwd-action').textContent = label;
+      document.getElementById('pwd-input').value = '';
+      document.getElementById('pwd-error').textContent = '';
+      document.getElementById('pwd-overlay').classList.add('open');
+      document.getElementById('pwd-input').focus();
+    });
   }
 
-  function clearToken() {
-    sessionStorage.removeItem('sysapi_token');
-    alert('Токен скинуто. Наступна дія запитає його знову.');
+  function modalOk() {
+    const pwd = document.getElementById('pwd-input').value.trim();
+    if (!pwd) {
+      document.getElementById('pwd-error').textContent = 'Введи пароль';
+      return;
+    }
+    sessionStorage.setItem('sysapi_pwd', pwd);
+    document.getElementById('pwd-overlay').classList.remove('open');
+    if (_resolve) { _resolve(pwd); _resolve = _reject = null; }
   }
+
+  function modalCancel() {
+    document.getElementById('pwd-overlay').classList.remove('open');
+    if (_reject) { _reject(new Error('Скасовано')); _resolve = _reject = null; }
+  }
+
+  function modalError(msg) {
+    sessionStorage.removeItem('sysapi_pwd');
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('pwd-error').textContent = msg;
+    document.getElementById('pwd-overlay').classList.add('open');
+    document.getElementById('pwd-input').focus();
+  }
+
+  function resetPassword() {
+    sessionStorage.removeItem('sysapi_pwd');
+    document.getElementById('sysapi-status').textContent = '';
+  }
+
+  document.getElementById('pwd-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  modalOk();
+    if (e.key === 'Escape') modalCancel();
+  });
+  document.getElementById('pwd-overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) modalCancel();
+  });
 
   // ── UI helpers ────────────────────────────────────────────
   function setBusy(busy) {
@@ -360,24 +451,21 @@
   }
 
   // ── API ───────────────────────────────────────────────────
-  async function api(method, path, token) {
+  async function api(method, path, pwd) {
     const r = await fetch(path, {
       method,
-      headers: { 'X-Token': token },
+      headers: { 'X-Password': pwd },
       cache: 'no-store',
     });
-    if (r.status === 401) {
-      sessionStorage.removeItem('sysapi_token');
-      throw new Error('Невірний токен — введи знову');
-    }
+    if (r.status === 401) throw new Error('401');
     return r.json();
   }
 
-  async function pollTask(taskId, title, token) {
-    for (let i = 0; i < 150; i++) {   // max 5 хвилин
+  async function pollTask(taskId, title, pwd) {
+    for (let i = 0; i < 150; i++) {
       await new Promise(r => setTimeout(r, 2000));
       try {
-        const d = await api('GET', `/sysapi/task/${taskId}`, token);
+        const d = await api('GET', `/sysapi/task/${taskId}`, pwd);
         showOp(title, d.status, d.output);
         if (d.status !== 'running') return;
       } catch (e) {
@@ -394,15 +482,17 @@
   };
 
   async function doRestart(svc) {
-    const token = getToken(); if (!token) return;
-    const title = `↺ Restart — ${LABELS[svc] || svc}`;
-    setBusy(true); showOp(title, 'running', '');
+    let pwd;
+    try { pwd = await getPassword(`↺ Перезапустити — ${LABELS[svc]}`); }
+    catch { return; }
+    setBusy(true); showOp(`↺ Restart — ${LABELS[svc]}`, 'running', '');
     try {
-      const d = await api('POST', `/sysapi/restart/${svc}`, token);
+      const d = await api('POST', `/sysapi/restart/${svc}`, pwd);
       if (d.error) throw new Error(d.error);
-      await pollTask(d.id, title, token);
+      await pollTask(d.id, `↺ Restart — ${LABELS[svc]}`, pwd);
     } catch (e) {
-      showOp(title, 'failed', String(e));
+      if (e.message === '401') { modalError('Невірний пароль'); return; }
+      showOp(`↺ Restart — ${LABELS[svc]}`, 'failed', String(e));
     } finally {
       setBusy(false);
       setTimeout(() => { checkAll(); checkSysapi(); }, 3000);
@@ -410,14 +500,17 @@
   }
 
   async function doUpdate(svc) {
-    const token = getToken(); if (!token) return;
-    const title = `↑ Update — ${LABELS[svc] || svc}`;
+    let pwd;
+    try { pwd = await getPassword(`↑ Оновити — ${LABELS[svc]}`); }
+    catch { return; }
+    const title = `↑ Update — ${LABELS[svc]}`;
     setBusy(true); showOp(title, 'running', 'Запуск оновлення…');
     try {
-      const d = await api('POST', `/sysapi/update/${svc}`, token);
+      const d = await api('POST', `/sysapi/update/${svc}`, pwd);
       if (d.error) throw new Error(d.error);
-      await pollTask(d.id, title, token);
+      await pollTask(d.id, title, pwd);
     } catch (e) {
+      if (e.message === '401') { modalError('Невірний пароль'); return; }
       showOp(title, 'failed', String(e));
     } finally {
       setBusy(false);
