@@ -14,6 +14,7 @@ ExecStart=/home/maan/watermarker-pro/.venv/bin/streamlit run web_app.py \
   --server.port 8501 \
   --server.baseUrlPath wm \
   --server.headless true \
+  --server.enableCORS false \
   --browser.gatherUsageStats false
 Restart=always
 RestartSec=5
