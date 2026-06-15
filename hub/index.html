@@ -27,8 +27,9 @@
     justify-content: center;
     padding: 48px 20px;
   }
-  main { width: 100%; max-width: 640px; }
-  header { margin-bottom: 36px; }
+  main { width: 100%; max-width: 720px; }
+
+  header { margin-bottom: 40px; }
   .crumb {
     font: 500 12px/1 ui-monospace, "Cascadia Mono", monospace;
     letter-spacing: 0.08em;
@@ -40,20 +41,7 @@
   .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
   .sub code { font-family: ui-monospace, monospace; color: var(--text); }
 
-  /* ── Service card ────────────────────────────────────────── */
-  .svc {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin-bottom: 8px;
-    transition: background 0.15s, border-color 0.15s;
-  }
-  .svc:hover { background: var(--card-hover); border-color: #3d4650; }
-
+  /* ── Dots & state ──────────────────────────────────────────── */
   .dot {
     width: 10px; height: 10px;
     border-radius: 50%;
@@ -66,58 +54,150 @@
     .dot.wait { animation: pulse 1.2s ease-in-out infinite; }
     @keyframes pulse { 50% { opacity: 0.35; } }
   }
+  .state { font: 11px/1 ui-monospace, "Cascadia Mono", monospace; color: var(--wait); }
+  .state.ok  { color: var(--ok); }
+  .state.bad { color: var(--bad); }
 
-  .info { flex: 1; min-width: 0; }
-  .name { font-weight: 600; font-size: 17px; }
-  .desc { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
-
-  .meta {
-    font: 12px/1 ui-monospace, "Cascadia Mono", monospace;
-    color: var(--muted);
-    text-align: right;
-    flex: none;
-    min-width: 72px;
+  /* ── Service grid ──────────────────────────────────────────── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 28px;
   }
-  .meta .state { display: block; margin-top: 6px; }
-  .state.ok   { color: var(--ok); }
-  .state.bad  { color: var(--bad); }
-  .state.wait { color: var(--wait); }
 
-  /* ── Action buttons ──────────────────────────────────────── */
-  .btns { display: flex; gap: 6px; align-items: center; flex: none; }
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    text-decoration: none;
+    color: var(--text);
+    transition: background 0.15s, border-color 0.15s, transform 0.12s;
+    min-height: 158px;
+  }
+  .card:hover {
+    background: var(--card-hover);
+    border-color: #3d4650;
+    transform: translateY(-2px);
+  }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .card-arrow {
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1;
+    margin-top: 1px;
+    transition: color 0.15s, transform 0.15s;
+  }
+  .card:hover .card-arrow { color: var(--berry); transform: translateX(3px); }
+
+  .card-name { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .card-desc { font-size: 13px; color: var(--muted); line-height: 1.5; flex: 1; }
+
+  .card-foot {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* ── Admin section ─────────────────────────────────────────── */
+  details.admin-section {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  details.admin-section > summary {
+    padding: 13px 18px;
+    cursor: pointer;
+    font-size: 13.5px;
+    color: var(--muted);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    user-select: none;
+    transition: color 0.15s;
+    border-radius: 12px;
+  }
+  details.admin-section > summary::-webkit-details-marker { display: none; }
+  details.admin-section > summary::before {
+    content: '\25B8';
+    font-size: 11px;
+    display: inline-block;
+    transition: transform 0.2s;
+    color: var(--berry);
+  }
+  details.admin-section[open] > summary::before { transform: rotate(90deg); }
+  details.admin-section > summary:hover { color: var(--text); }
+  details.admin-section[open] > summary {
+    border-bottom: 1px solid var(--line);
+    border-radius: 12px 12px 0 0;
+    color: var(--text);
+  }
+
+  .admin-inner { padding: 4px 18px 16px; }
+
+  .admin-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .admin-row:last-of-type { border-bottom: none; }
+
+  .admin-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 120px;
+  }
+  .admin-svc { font-size: 13.5px; font-weight: 500; }
+
+  .admin-btns { display: flex; gap: 6px; flex: none; }
+
   .btn-act {
     background: none;
     border: 1px solid var(--line);
     color: var(--muted);
     border-radius: 6px;
-    padding: 5px 9px;
-    font-size: 13px;
+    padding: 5px 10px;
+    font-size: 12px;
     cursor: pointer;
     transition: border-color 0.15s, color 0.15s;
     font-family: inherit;
     line-height: 1;
+    white-space: nowrap;
   }
   .btn-act:hover:not(:disabled) { border-color: var(--berry); color: var(--berry); }
   .btn-act:disabled { opacity: 0.35; cursor: not-allowed; }
-  .btn-open {
-    color: var(--muted);
-    font-size: 18px;
-    text-decoration: none;
-    padding: 2px 4px;
-    line-height: 1;
-    border-radius: 4px;
-    transition: color 0.15s;
-  }
-  .btn-open:hover { color: var(--berry); }
+  .btn-label { display: none; }
+  @media (min-width: 480px) { .btn-label { display: inline; } }
 
-  /* ── Bulk row ────────────────────────────────────────────── */
-  .bulk { display: flex; gap: 8px; justify-content: flex-end; margin: 4px 0 20px; }
+  .admin-bulk {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
   .btn-bulk {
     background: none;
     border: 1px solid var(--line);
     color: var(--muted);
     border-radius: 8px;
-    padding: 6px 14px;
+    padding: 7px 14px;
     font-size: 13px;
     cursor: pointer;
     font-family: inherit;
@@ -126,7 +206,7 @@
   .btn-bulk:hover:not(:disabled) { border-color: var(--berry); color: var(--berry); }
   .btn-bulk:disabled { opacity: 0.35; cursor: not-allowed; }
 
-  /* ── Password modal ──────────────────────────────────────── */
+  /* ── Password modal ────────────────────────────────────────── */
   #pwd-overlay {
     display: none;
     position: fixed;
@@ -171,20 +251,12 @@
     cursor: pointer;
     transition: background 0.15s, border-color 0.15s;
   }
-  #pwd-ok {
-    background: var(--berry);
-    border: none;
-    color: #fff;
-  }
+  #pwd-ok { background: var(--berry); border: none; color: #fff; }
   #pwd-ok:hover { background: #a82d4f; }
-  #pwd-cancel {
-    background: none;
-    border: 1px solid var(--line);
-    color: var(--muted);
-  }
+  #pwd-cancel { background: none; border: 1px solid var(--line); color: var(--muted); }
   #pwd-cancel:hover { border-color: var(--berry); color: var(--berry); }
 
-  /* ── Operation panel ─────────────────────────────────────── */
+  /* ── Operation panel ───────────────────────────────────────── */
   #op-panel {
     display: none;
     background: var(--card);
@@ -234,75 +306,41 @@
 <body>
 <main>
   <header>
-    <div class="crumb">raspberry pi 5 · локальна мережа</div>
+    <div class="crumb">Raspberry Pi 5</div>
     <h1>Сервіси</h1>
-    <p class="sub">Хост: <code id="host">…</code> · статуси оновлюються кожні 15 с</p>
+    <p class="sub">Хост: <code id="host">…</code></p>
   </header>
 
-  <!-- NewsMon -->
-  <div class="svc">
-    <span class="dot wait" id="dot-news"></span>
-    <span class="info">
-      <span class="name">NewsMon</span>
-      <span class="desc">Моніторинг Telegram-каналів, AI-оцінка, дайджести</span>
-    </span>
-    <span class="meta">:8000<span class="state wait" id="st-news">перевірка…</span></span>
-    <span class="btns">
-      <button class="btn-act" onclick="doRestart('newsmon')" title="Перезапустити">↺</button>
-      <button class="btn-act" onclick="doUpdate('newsmon')"  title="Оновити (git pull)">↑</button>
-      <a class="btn-open" id="link-news" href="#" target="_blank" title="Відкрити">→</a>
-    </span>
-  </div>
+  <div class="grid">
+    <a class="card" id="link-news" href="#" target="_blank">
+      <div class="card-top">
+        <span class="dot wait" id="dot-news"></span>
+        <span class="card-arrow">&#8594;</span>
+      </div>
+      <div class="card-name">NewsMon</div>
+      <div class="card-desc">Моніторинг Telegram-каналів та AI-дайджести новин</div>
+      <div class="card-foot"><span class="state wait" id="st-news">перевірка…</span></div>
+    </a>
 
-  <!-- AI News Writer -->
-  <div class="svc">
-    <span class="dot wait" id="dot-writer"></span>
-    <span class="info">
-      <span class="name">AI News Writer</span>
-      <span class="desc">Генерація новинних текстів · адмінка /admin/admin.php</span>
-    </span>
-    <span class="meta">:80 php<span class="state wait" id="st-writer">перевірка…</span></span>
-    <span class="btns">
-      <button class="btn-act" onclick="doRestart('writer')" title="Перезапустити php-fpm + nginx">↺</button>
-      <button class="btn-act" onclick="doUpdate('writer')"  title="Оновити (git pull)">↑</button>
-      <a class="btn-open" href="/public/newswriter.html" target="_blank" title="Відкрити">→</a>
-    </span>
-  </div>
+    <a class="card" href="/public/newswriter.html" target="_blank">
+      <div class="card-top">
+        <span class="dot wait" id="dot-writer"></span>
+        <span class="card-arrow">&#8594;</span>
+      </div>
+      <div class="card-name">AI News Writer</div>
+      <div class="card-desc">Генерація новинних текстів за допомогою AI</div>
+      <div class="card-foot"><span class="state wait" id="st-writer">перевірка…</span></div>
+    </a>
 
-  <!-- Watermarker Pro -->
-  <div class="svc">
-    <span class="dot wait" id="dot-wm"></span>
-    <span class="info">
-      <span class="name">Watermarker Pro</span>
-      <span class="desc">Пакетні водяні знаки: текст і PNG-логотип, пресети, редактор</span>
-    </span>
-    <span class="meta">:8501 /wm<span class="state wait" id="st-wm">перевірка…</span></span>
-    <span class="btns">
-      <button class="btn-act" onclick="doRestart('watermarker')" title="Перезапустити">↺</button>
-      <button class="btn-act" onclick="doUpdate('watermarker')"  title="Оновити (git pull)">↑</button>
-      <a class="btn-open" href="/wm/" target="_blank" title="Відкрити">→</a>
-    </span>
-  </div>
-
-  <!-- Hub / sysapi -->
-  <div class="svc">
-    <span class="dot wait" id="dot-sys"></span>
-    <span class="info">
-      <span class="name">Hub · sysapi</span>
-      <span class="desc">Цей хаб та API управління — git pull без SSH</span>
-    </span>
-    <span class="meta">:8502<span class="state wait" id="st-sys">перевірка…</span></span>
-    <span class="btns">
-      <button class="btn-act" onclick="doRestart('sysapi')" title="Перезапустити sysapi">↺</button>
-      <button class="btn-act" onclick="doUpdate('media')"   title="git pull media + оновити хаб">↑</button>
-      <span style="display:inline-block;width:26px"></span>
-    </span>
-  </div>
-
-  <!-- Bulk actions -->
-  <div class="bulk">
-    <button class="btn-bulk" onclick="doUpdate('all')">↑ Оновити всі сервіси</button>
-    <button class="btn-bulk" onclick="resetPassword()">🔑 Вийти</button>
+    <a class="card" href="/wm/" target="_blank">
+      <div class="card-top">
+        <span class="dot wait" id="dot-wm"></span>
+        <span class="card-arrow">&#8594;</span>
+      </div>
+      <div class="card-name">Watermarker Pro</div>
+      <div class="card-desc">Пакетне нанесення водяних знаків на фото та зображення</div>
+      <div class="card-foot"><span class="state wait" id="st-wm">перевірка…</span></div>
+    </a>
   </div>
 
   <!-- Operation panel -->
@@ -310,10 +348,64 @@
     <div class="op-header">
       <span class="op-title" id="op-title">—</span>
       <span id="op-status"></span>
-      <button class="btn-close" onclick="closeOp()">✕</button>
+      <button class="btn-close" onclick="closeOp()">&#x2715;</button>
     </div>
     <pre id="op-log"></pre>
   </div>
+
+  <!-- Admin section -->
+  <details class="admin-section">
+    <summary>Адміністрування</summary>
+    <div class="admin-inner">
+
+      <div class="admin-row">
+        <div class="admin-info">
+          <span class="admin-svc">NewsMon</span>
+        </div>
+        <div class="admin-btns">
+          <button class="btn-act" onclick="doRestart('newsmon')" title="Перезапустити">&#x21BA;<span class="btn-label"> Перезапустити</span></button>
+          <button class="btn-act" onclick="doUpdate('newsmon')"  title="Оновити (git pull)">&#x2191;<span class="btn-label"> Оновити</span></button>
+        </div>
+      </div>
+
+      <div class="admin-row">
+        <div class="admin-info">
+          <span class="admin-svc">AI News Writer</span>
+        </div>
+        <div class="admin-btns">
+          <button class="btn-act" onclick="doRestart('writer')" title="Перезапустити php-fpm + nginx">&#x21BA;<span class="btn-label"> Перезапустити</span></button>
+          <button class="btn-act" onclick="doUpdate('writer')"  title="Оновити (git pull)">&#x2191;<span class="btn-label"> Оновити</span></button>
+        </div>
+      </div>
+
+      <div class="admin-row">
+        <div class="admin-info">
+          <span class="admin-svc">Watermarker Pro</span>
+        </div>
+        <div class="admin-btns">
+          <button class="btn-act" onclick="doRestart('watermarker')" title="Перезапустити">&#x21BA;<span class="btn-label"> Перезапустити</span></button>
+          <button class="btn-act" onclick="doUpdate('watermarker')"  title="Оновити (git pull)">&#x2191;<span class="btn-label"> Оновити</span></button>
+        </div>
+      </div>
+
+      <div class="admin-row">
+        <div class="admin-info">
+          <span class="dot wait" id="dot-sys"></span>
+          <span class="admin-svc">Hub · sysapi</span>
+          <span class="state wait" id="st-sys">перевірка…</span>
+        </div>
+        <div class="admin-btns">
+          <button class="btn-act" onclick="doRestart('sysapi')" title="Перезапустити sysapi">&#x21BA;<span class="btn-label"> Перезапустити</span></button>
+          <button class="btn-act" onclick="doUpdate('media')"   title="git pull media + оновити хаб">&#x2191;<span class="btn-label"> Оновити хаб</span></button>
+        </div>
+      </div>
+
+      <div class="admin-bulk">
+        <button class="btn-bulk" onclick="doUpdate('all')">&#x2191; Оновити всі сервіси</button>
+        <button class="btn-bulk" onclick="resetPassword()">Вийти</button>
+      </div>
+    </div>
+  </details>
 
   <footer>
     <span>nginx · systemd · <span id="clock"></span></span>
@@ -355,7 +447,7 @@
     const st  = document.getElementById('st-' + id);
     dot.className = 'dot ' + (ok ? 'ok' : 'bad');
     st.className  = 'state ' + (ok ? 'ok' : 'bad');
-    st.textContent = ok ? 'active (running)' : 'failed';
+    st.textContent = ok ? 'працює' : 'недоступний';
   }
 
   async function checkAll() {
@@ -372,11 +464,11 @@
     try {
       const d = await (await fetch('/sysapi/health', { cache:'no-store' })).json();
       dot.className = 'dot ok';
-      st.className = 'state ok'; st.textContent = d.busy ? 'зайнятий' : 'running';
+      st.className = 'state ok'; st.textContent = d.busy ? 'зайнятий' : 'працює';
       el.textContent = '';
     } catch {
       dot.className = 'dot bad';
-      st.className = 'state bad'; st.textContent = 'failed';
+      st.className = 'state bad'; st.textContent = 'недоступний';
       el.textContent = 'sysapi недоступний'; el.style.color = 'var(--bad)';
     }
   }
@@ -393,7 +485,6 @@
   // ── Password modal ────────────────────────────────────────
   let _resolve = null, _reject = null;
 
-  // errMsg: if non-empty, ignore stored password and show modal with that error
   function getPassword(label, errMsg = '') {
     const stored = sessionStorage.getItem('sysapi_pwd');
     if (stored && !errMsg) return Promise.resolve(stored);
@@ -445,8 +536,8 @@
 
   const STATUS_MAP = {
     running: ['⏳ виконується…', 'op-busy'],
-    done:    ['✓ готово',        'op-ok'],
-    failed:  ['✗ помилка',       'op-err'],
+    done:    ['✓ готово',            'op-ok'],
+    failed:  ['✗ помилка',           'op-err'],
   };
 
   function showOp(title, status, output) {
@@ -455,9 +546,10 @@
     const el = document.getElementById('op-status');
     const [text, cls] = STATUS_MAP[status] || ['', ''];
     el.textContent = text; el.className = cls;
-    document.getElementById('op-panel').classList.add('visible');
-    const log = document.getElementById('op-log');
-    log.scrollTop = log.scrollHeight;
+    const panel = document.getElementById('op-panel');
+    panel.classList.add('visible');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    document.getElementById('op-log').scrollTop = document.getElementById('op-log').scrollHeight;
   }
 
   function closeOp() {
@@ -476,7 +568,6 @@
     return r.json();
   }
 
-  // Returns true on success, false on failure/timeout
   async function pollTask(taskId, title, pwd) {
     for (let i = 0; i < 150; i++) {
       await new Promise(r => setTimeout(r, 2000));
@@ -505,7 +596,11 @@
       await new Promise(r => setTimeout(r, 1000));
       try {
         const r = await fetch('/sysapi/health', { cache: 'no-store' });
-        if (r.ok) { showOp(title, 'done', 'sysapi перезапущено успішно.'); setTimeout(() => location.reload(), 1500); return; }
+        if (r.ok) {
+          showOp(title, 'done', 'sysapi перезапущено успішно.');
+          setTimeout(() => location.reload(), 1500);
+          return;
+        }
       } catch { /* sysapi ще не готовий */ }
     }
     showOp(title, 'failed', 'sysapi не відповів протягом 20 с');
@@ -559,7 +654,7 @@
         if (d.error) throw new Error(d.error);
         if (svc === 'media') {
           const ok = await pollTask(d.id, title, pwd);
-          if (!ok) return;  // update failed — не перезапускаємо sysapi
+          if (!ok) return;
           showOp(title, 'running', 'Оновлення завершено. Перезапуск sysapi…');
           const rd = await api('POST', '/sysapi/restart/sysapi', pwd);
           if (rd.error) throw new Error(rd.error);
