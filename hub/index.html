@@ -40,6 +40,12 @@
   h1 { font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
   .sub { color: var(--muted); font-size: 14px; margin-top: 6px; }
   .sub code { font-family: ui-monospace, monospace; color: var(--text); }
+  .sys-bar {
+    font: 12px/1 ui-monospace, "Cascadia Mono", monospace;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 14px;
+  }
 
   /* ── Dots & state ──────────────────────────────────────────── */
   .dot {
@@ -309,6 +315,7 @@
     <div class="crumb">Raspberry Pi 5</div>
     <h1>Сервіси</h1>
     <p class="sub">Хост: <code id="host">…</code></p>
+    <p class="sys-bar" id="sys-bar">…</p>
   </header>
 
   <div class="grid">
@@ -477,9 +484,34 @@
     document.getElementById('clock').textContent = new Date().toLocaleString('uk-UA');
   }
 
-  checkAll(); checkSysapi(); tick();
+  function fmtUptime(s) {
+    const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600),
+          m = Math.floor((s % 3600) / 60);
+    if (d > 0) return `${d}д ${h}г`;
+    if (h > 0) return `${h}г ${m}хв`;
+    return `${m}хв`;
+  }
+
+  async function fetchStats() {
+    const el = document.getElementById('sys-bar');
+    try {
+      const d = await (await fetch('/sysapi/stats', { cache: 'no-store' })).json();
+      const parts = [];
+      if (d.temp_c   != null) parts.push(`${d.temp_c}°C`);
+      if (d.load     != null) parts.push(`нав. ${d.load[0].toFixed(2)}`);
+      if (d.ram_pct  != null) parts.push(`ОЗП ${d.ram_pct}% (${d.ram_used_mb} / ${d.ram_total_mb} МБ)`);
+      if (d.disk_pct != null) parts.push(`диск ${d.disk_pct}% (${d.disk_used_gb} / ${d.disk_total_gb} ГБ)`);
+      if (d.uptime_s != null) parts.push(fmtUptime(d.uptime_s));
+      el.textContent = parts.join(' · ');
+    } catch {
+      el.textContent = '';
+    }
+  }
+
+  checkAll(); checkSysapi(); tick(); fetchStats();
   setInterval(checkAll, 15000);
   setInterval(checkSysapi, 30000);
+  setInterval(fetchStats, 10000);
   setInterval(tick, 1000);
 
   // ── Password modal ────────────────────────────────────────
