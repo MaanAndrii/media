@@ -38,6 +38,48 @@ _tlock  = threading.Lock()
 _oplock = threading.Lock()
 
 
+def _get_stats() -> dict:
+    r: dict = {}
+    try:
+        with open("/sys/class/thermal/thermal_zone0/temp") as f:
+            r["temp_c"] = round(int(f.read().strip()) / 1000, 1)
+    except Exception:
+        r["temp_c"] = None
+    try:
+        with open("/proc/loadavg") as f:
+            p = f.read().split()
+            r["load"] = [float(p[0]), float(p[1]), float(p[2])]
+    except Exception:
+        r["load"] = None
+    try:
+        mem: dict[str, int] = {}
+        with open("/proc/meminfo") as f:
+            for line in f:
+                k, v = line.split(":", 1)
+                mem[k.strip()] = int(v.strip().split()[0])
+        total, avail = mem["MemTotal"], mem["MemAvailable"]
+        r["ram_total_mb"] = total // 1024
+        r["ram_used_mb"]  = (total - avail) // 1024
+        r["ram_pct"]      = round((total - avail) / total * 100)
+    except Exception:
+        r["ram_total_mb"] = r["ram_used_mb"] = r["ram_pct"] = None
+    try:
+        st = os.statvfs("/")
+        total_b = st.f_blocks * st.f_frsize
+        used_b  = (st.f_blocks - st.f_bavail) * st.f_frsize
+        r["disk_total_gb"] = round(total_b / 1e9, 1)
+        r["disk_used_gb"]  = round(used_b  / 1e9, 1)
+        r["disk_pct"]      = round(used_b / total_b * 100)
+    except Exception:
+        r["disk_total_gb"] = r["disk_used_gb"] = r["disk_pct"] = None
+    try:
+        with open("/proc/uptime") as f:
+            r["uptime_s"] = int(float(f.read().split()[0]))
+    except Exception:
+        r["uptime_s"] = None
+    return r
+
+
 def _run(tid: str, cmd: list[str]) -> None:
     try:
         p = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
@@ -78,6 +120,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         if path == "/sysapi/health":
             self._send(200, {"ok": True, "busy": _oplock.locked()})
+            return
+
+        if path == "/sysapi/stats":
+            self._send(200, _get_stats())
             return
 
         if path.startswith("/sysapi/task/"):
