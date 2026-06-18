@@ -20,7 +20,7 @@ log() { printf '\n\033[1;35m== %s ==\033[0m\n' "$1"; }
 update_newsmon() {
   log "newsmon"
   cd "$NEWSMON_DIR"
-  git pull --rebase
+  git pull --rebase --autostash
   ./backend/.venv/bin/pip install -q -r backend/requirements.txt
   sudo systemctl restart newsmon
   systemctl is-active newsmon || echo "ПОПЕРЕДЖЕННЯ: newsmon не активний після перезапуску"
@@ -29,7 +29,7 @@ update_newsmon() {
 update_watermarker() {
   log "watermarker-pro"
   cd "$WM_DIR"
-  git pull --rebase
+  git pull --rebase --autostash
   ./.venv/bin/pip install -q -r requirements.txt
   sudo systemctl restart watermarker
   systemctl is-active watermarker || echo "ПОПЕРЕДЖЕННЯ: watermarker не активний після перезапуску"
@@ -43,7 +43,7 @@ update_writer() {
             2>/dev/null | awk '{print $1}' | head -1 || true)
   [[ -n "$PHP_FPM" ]] || { echo "Помилка: php-fpm сервіс не знайдено"; exit 1; }
   cd "$WRITER_DIR"
-  sudo -u www-data git pull --rebase
+  sudo -u www-data git pull --rebase --autostash
   sudo systemctl restart "$PHP_FPM"
   sudo systemctl reload nginx
   systemctl is-active "$PHP_FPM" || echo "ПОПЕРЕДЖЕННЯ: $PHP_FPM не активний після перезапуску"
